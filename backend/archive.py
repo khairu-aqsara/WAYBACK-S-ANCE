@@ -126,6 +126,25 @@ def _bare_host(netloc: str) -> str:
     return host[4:] if host.startswith("www.") else host
 
 
+def brand(url: str) -> str:
+    """The longest host label without the TLD: geocities.com gives geocities, del.icio.us gives icio."""
+    labels = _bare_host(urlsplit(url if "://" in url else "http://" + url).netloc).split(".")
+    return max(labels[:-1] or labels, key=len)
+
+
+def landed_elsewhere(site_url: str, landed_url: str, title: str, text: str) -> str | None:
+    """The foreign host a redirect landed on, or None when the page still belongs to the site.
+
+    A dead site's address often redirects to its new owner. That page is a sign of death, not the
+    site's own words, unless it still names the site (Yahoo! GeoCities stays, the Yahoo homepage goes).
+    """
+    site = urlsplit(site_url if "://" in site_url else "http://" + site_url).netloc
+    landed = urlsplit(landed_url).netloc
+    if _bare_host(landed) == _bare_host(site) or brand(site_url) in f"{title} {text}".lower():
+        return None
+    return _bare_host(landed)
+
+
 def same_host_links(hrefs: list[str], base_url: str, limit: int = config.DEPTH1_MAX_PAGES) -> list[str]:
     """Absolute same-site page links from a page, deduplicated by path, homepage excluded."""
     base = base_url if "://" in base_url else "http://" + base_url
@@ -178,7 +197,8 @@ async def list_snapshots(http: httpx.AsyncClient, url: str) -> list[tuple[str, s
         "url": normalize_url(url),
         "output": "json",
         "fl": "timestamp,original",
-        "filter": ["statuscode:200", "mimetype:text/html"],
+        # Dead sites often answer with redirects; fetch() follows them and is_junk() drops empty landings.
+        "filter": ["statuscode:(200|301|302)", "mimetype:text/html"],
         "collapse": "timestamp:6",
     }
     response = await _get(http, CDX_URL, params=params)
@@ -188,8 +208,11 @@ async def list_snapshots(http: httpx.AsyncClient, url: str) -> list[tuple[str, s
     return select_snapshots([(ts, original) for ts, original in rows[1:]])
 
 
-async def fetch(http: httpx.AsyncClient, ts: str, url: str) -> str | None:
+async def fetch(http: httpx.AsyncClient, ts: str, url: str) -> tuple[str, str] | None:
+    """Return (html, landed_url): the page and the original URL it came from after redirects."""
     response = await _get(http, RAW_URL.format(ts=ts, url=url))
     if response is None or "html" not in response.headers.get("content-type", "html"):
         return None
-    return response.text
+    final = str(response.url)
+    landed = final.split("id_/", 1)[1] if "id_/" in final else url
+    return response.text, landed

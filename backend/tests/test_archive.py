@@ -65,6 +65,30 @@ def test_same_host_links_filters_other_hosts_assets_and_duplicates():
     ]
 
 
+def test_brand_is_the_longest_label_without_tld():
+    assert archive.brand("geocities.com") == "geocities"
+    assert archive.brand("http://www.friendster.com/") == "friendster"
+    assert archive.brand("del.icio.us") == "icio"
+
+
+def test_redirect_to_new_owner_counts_as_moved():
+    assert archive.landed_elsewhere(
+        "http://geocities.com/", "https://www.yahoo.com/", "Yahoo | Mail, Weather, Search", "Top stories today"
+    ) == "yahoo.com"
+
+
+def test_redirect_that_still_names_the_site_is_kept():
+    assert archive.landed_elsewhere(
+        "http://geocities.com/", "http://geocities.yahoo.com/", "Yahoo! GeoCities: Get a web site", "Build it"
+    ) is None
+
+
+def test_same_host_page_is_kept_whatever_it_says():
+    assert archive.landed_elsewhere(
+        "http://del.icio.us/", "http://www.del.icio.us/", "Apache2 Ubuntu Default Page: It works", "It works"
+    ) is None
+
+
 def test_normalize_and_slug():
     assert archive.normalize_url("https://Del.icio.us/") == "del.icio.us"
     assert archive.normalize_url("geocities.com/Area51/Vault/") == "geocities.com/Area51/Vault"

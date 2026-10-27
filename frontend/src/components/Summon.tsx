@@ -2,7 +2,16 @@ import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
 import Radar from "./Radar";
 
-const EXAMPLES = ["del.icio.us", "geocities.com", "friendster.com", "vine.co", "orkut.com"];
+const EXAMPLES = [
+  "del.icio.us",
+  "geocities.com",
+  "excite.com",
+  "altavista.com",
+  "theglobe.com",
+  "friendster.com",
+  "vine.co",
+  "orkut.com",
+];
 
 interface Props {
   size: number;

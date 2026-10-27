@@ -82,10 +82,14 @@ async def _archive(site: dict, log: EventLog) -> None:
 
 async def _fetch_page(http, snap: dict, url: str, root: Path) -> dict:
     page = {"page": archive.page_key(url), "status": "missing", "chars": 0}
-    html = await archive.fetch(http, snap["ts"], url)
-    if html is not None:
+    fetched = await archive.fetch(http, snap["ts"], url)
+    if fetched is not None:
+        html, landed = fetched
         title, text, links = archive.extract(html)
         page.update(title=title, chars=len(text), status="junk" if archive.is_junk(text) else "ok")
+        moved_to = archive.landed_elsewhere(url, landed, title, text)
+        if moved_to:
+            page.update(status="junk", title=f"moved to {moved_to}")
         if page["status"] == "ok":
             page["file"] = _text_file(snap["ts"], page["page"])
             (root / "text" / page["file"]).write_text(text)

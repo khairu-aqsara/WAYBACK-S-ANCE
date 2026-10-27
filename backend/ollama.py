@@ -25,15 +25,21 @@ async def available() -> bool:
     return all(w in names or f"{w}:latest" in names for w in wanted)
 
 
-async def embed(texts: list[str], prefix: str) -> list[list[float]]:
-    """prefix is `search_document` or `search_query`, as nomic-embed-text expects."""
+async def embed(texts: list[str], prefix: str, batch: int = 32) -> list[list[float]]:
+    """prefix is `search_document` or `search_query`, as nomic-embed-text expects.
+
+    Sent in batches: one request with ~500 inputs crashes the Ollama tokenizer.
+    """
+    vectors: list[list[float]] = []
     async with httpx.AsyncClient(timeout=120.0) as http:
-        response = await http.post(
-            f"{config.OLLAMA_URL}/api/embed",
-            json={"model": config.EMBED_MODEL, "input": [f"{prefix}: {t}" for t in texts]},
-        )
-        response.raise_for_status()
-        return response.json()["embeddings"]
+        for start in range(0, len(texts), batch):
+            response = await http.post(
+                f"{config.OLLAMA_URL}/api/embed",
+                json={"model": config.EMBED_MODEL, "input": [f"{prefix}: {t}" for t in texts[start : start + batch]]},
+            )
+            response.raise_for_status()
+            vectors.extend(response.json()["embeddings"])
+    return vectors
 
 
 async def chat(system: str, user: str, temperature: float = 0.6) -> str:
