@@ -4,6 +4,8 @@ Name a website that died. Wayback Séance pulls its snapshots from the Internet 
 
 Built for the [Hacktoberfest Open-Source AI Challenge, Week 4: Ghost in the Machine](https://dev.to/challenges/hacktoberfest-week4-2026-10-26).
 
+**Demo video:** https://youtu.be/sH4KJWimVBY
+
 ## Run it
 
 Requirements: Python 3.11+, [uv](https://docs.astral.sh/uv/), Node 20+, [Ollama](https://ollama.com).
